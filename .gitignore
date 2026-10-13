@@ -1,0 +1,8 @@
+# Public history database is intentionally versioned as the workflow's state.
+# Keep other generated data and logs out of the public repository.
+radar/data/indiegogo/*
+!radar/data/indiegogo/radar_history.sqlite3
+radar/__pycache__/
+*.py[cod]
+
+__pycache__/

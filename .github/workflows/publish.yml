@@ -1,0 +1,69 @@
+name: Update radar data and publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. Minute 17 avoids the busiest top-of-hour start.
+    # Beijing time (UTC+8): 00:17, 02:17, ..., 22:17 every day.
+    - cron: "17 */2 * * *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: radar-pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public radar repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        if: github.event_name != 'push'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect latest projects and rebuild dashboard
+        if: github.event_name != 'push'
+        run: python radar/04_run_radar_once.py
+
+      - name: Prepare the public Pages site
+        if: github.event_name != 'push'
+        run: python publish_site.py
+
+      - name: Save updated history for the next run
+        if: github.event_name != 'push'
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radar/data/indiegogo/radar_history.sqlite3 site/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Update radar snapshot"
+            git push origin "HEAD:${BRANCH_NAME}"
+          else
+            echo "No generated changes to save."
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy public dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
