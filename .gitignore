@@ -6,3 +6,6 @@ radar/__pycache__/
 *.py[cod]
 
 __pycache__/
+
+# Generated local preview (the public copy is site/index.html)
+radar/AI众筹创新雷达_本地看板.html
